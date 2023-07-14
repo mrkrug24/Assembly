@@ -1,0 +1,575 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>asm_22_03_2022</title>
+  <link rel="stylesheet" href="https://stackedit.io/style.css" />
+</head>
+
+<body class="stackedit">
+  <div class="stackedit__left">
+    <div class="stackedit__toc">
+      
+    </div>
+  </div>
+  <div class="stackedit__right">
+    <div class="stackedit__html">
+      <hr>
+<p><strong>00_reverse.asm</strong></p>
+<p>Требуется при помощи стека переставить значения переменных <code>a</code>,  <code>b</code>, <code>c</code>, <code>d</code>:</p>
+<p><code>a</code> &lt;- <code>d</code><br>
+<code>b</code> &lt;- <code>c</code><br>
+<code>c</code> &lt;- <code>b</code><br>
+<code>d</code> &lt;- <code>a</code></p>
+<pre><code>%include "io.inc"
+
+section .bss
+    a resd 1
+    b resd 1
+    c resd 1
+    d resd 1
+
+section .text
+global CMAIN
+CMAIN:
+    mov dword[a], 1
+    mov dword[b], 2
+    mov dword[c], 3
+    mov dword[d], 4
+
+    PRINT_DEC 4, [a]
+    NEWLINE
+    PRINT_DEC 4, [b]
+    NEWLINE
+    PRINT_DEC 4, [c]
+    NEWLINE
+    PRINT_DEC 4, [d]
+    NEWLINE
+
+    push dword[a]
+    push dword[b]
+    push dword[c]
+    push dword[d]
+
+    pop dword[a]
+    pop dword[b]
+    pop dword[c]
+    pop dword[d]
+
+    NEWLINE
+    
+    PRINT_DEC 4, [a]
+    NEWLINE
+    PRINT_DEC 4, [b]
+    NEWLINE
+    PRINT_DEC 4, [c]
+    NEWLINE
+    PRINT_DEC 4, [d]
+
+    xor eax, eax
+    ret
+</code></pre>
+<hr>
+<p><strong>01_helloworld.asm</strong></p>
+<p>Написать функцию, которая выводит на экран фразу <code>Hello, world!</code><br>
+<br></p>
+<pre><code>%include "io.inc"
+
+section .text
+global CMAIN
+CMAIN:
+    push ebp
+    mov ebp, esp
+
+    call helloworld
+    
+    mov esp, ebp
+    pop ebp
+    
+    xor eax, eax
+    ret
+    
+helloworld:
+    push ebp
+    mov ebp, esp
+
+    PRINT_STRING `Hello, world!`
+
+    mov esp, ebp
+    pop ebp
+
+    ret
+</code></pre>
+<hr>
+<p><strong>02_max2_v1.asm (cdecl)</strong></p>
+<p>Написать функцию, возвращающую максимум двух переменных</p>
+<pre><code>int max(int a, int b) {
+	return (a &gt; b) ? a : b;
+}
+</code></pre>
+<br>
+<pre><code>%include "io.inc"
+
+section .bss
+    x resd 1
+    y resd 1
+
+section .text
+global CMAIN
+CMAIN:
+    push ebp
+    mov ebp, esp
+    
+    mov DWORD[x], 5
+    mov DWORD[y], 6
+    
+    push dword[x]
+    push dword[y]
+    
+    call max
+    
+    PRINT_DEC 4, eax
+
+    mov esp, ebp
+    pop ebp
+
+    xor eax, eax
+    ret
+    
+max:
+    push ebp
+    mov ebp, esp
+    
+    push ebx
+
+    PRINT_STRING `x: `
+    PRINT_DEC 4, [EBP+12]
+    NEWLINE
+
+    PRINT_STRING `y: `
+    PRINT_DEC 4, [EBP+8]
+    NEWLINE
+
+    mov eax, [EBP+8]  ; y   
+    mov ebx, [EBP+12] ; x
+    
+    cmp eax, ebx
+    jl .swap
+    jmp .end
+    
+.swap:
+    mov eax, ebx
+
+
+.end:
+    pop ebx
+
+    mov esp, ebp
+    pop ebp
+
+    ret
+</code></pre>
+<hr>
+<p><strong>02_max2_v2.asm (cdecl)</strong></p>
+<pre><code>%include "io.inc"
+
+section .bss
+    x resd 1
+    y resd 1
+
+section .text
+global CMAIN
+CMAIN:
+    push ebp
+    mov ebp, esp
+    
+    mov DWORD[x], 5
+    mov DWORD[y], 6
+    
+    push dword[x]
+    push dword[y]
+    
+    call max
+    
+    PRINT_DEC 4, eax
+
+    mov esp, ebp
+    pop ebp
+
+    xor eax, eax
+    ret
+    
+max:
+    push ebp
+    mov ebp, esp
+
+    push esi
+    push edi
+    
+    mov esi, [EBP+8]
+    mov edi, [EBP+12]
+
+    PRINT_STRING `x: `
+    PRINT_DEC 4, edi
+    NEWLINE
+
+    PRINT_STRING `y: `
+    PRINT_DEC 4, esi
+    NEWLINE           
+     
+    cmp esi, edi
+    jl .swap
+    mov eax, esi
+    jmp .end
+    
+.swap:
+    mov eax, edi
+
+.end:
+    pop edi
+    pop esi
+
+    mov esp, ebp
+    pop ebp
+
+    ret
+</code></pre>
+<hr>
+<p><strong>02_max2_v3.asm (cdecl)</strong></p>
+<pre><code>%include "io.inc"
+
+section .text
+global CMAIN
+CMAIN:
+    push ebp
+    mov ebp, esp
+    
+    sub ESP, 8
+    
+    GET_DEC 4, [ESP]    ; x
+    GET_DEC 4, [ESP+4]  ; y
+    
+    call max
+
+    add ESP, 8
+        
+    PRINT_DEC 4, eax
+
+    mov esp, ebp
+    pop ebp
+
+    xor eax, eax
+    ret
+    
+max:
+    push ebp
+    mov ebp, esp
+
+    push esi
+    push edi
+    
+    mov esi, [EBP+8]
+    mov edi, [EBP+12]
+
+    PRINT_STRING `x: `
+    PRINT_DEC 4, esi
+    NEWLINE
+
+    PRINT_STRING `y: `
+    PRINT_DEC 4, edi
+    NEWLINE           
+     
+    cmp esi, edi
+    jl .swap
+    mov eax, esi
+    jmp .end
+    
+.swap:
+    mov eax, edi
+
+.end:
+    pop edi
+    pop esi
+
+    mov esp, ebp
+    pop ebp
+
+    ret
+</code></pre>
+<hr>
+<p><strong>03_max3.asm (cdecl)</strong></p>
+<p>Написать функцию, возвращающую максимум трех переменных</p>
+<pre><code>int max(int a, int b, int c) {
+	...
+}
+</code></pre>
+<br>
+<pre><code>%include "io.inc"
+
+section .text
+global CMAIN
+CMAIN:
+    push ebp
+    mov ebp, esp
+    
+    sub ESP, 12
+    
+    GET_DEC 4, [ESP]    ; x
+    GET_DEC 4, [ESP+4]  ; y
+    GET_DEC 4, [ESP+8]  ; z
+    
+    call max
+
+    add ESP, 12
+        
+    PRINT_DEC 4, eax
+
+    mov esp, ebp
+    pop ebp
+
+    xor eax, eax
+    ret
+    
+max:
+    push ebp
+    mov ebp, esp
+
+    push esi
+    push edi
+    
+    mov esi, [EBP+8]    ; x
+    mov edi, [EBP+12]   ; y
+
+    PRINT_STRING `x: `
+    PRINT_DEC 4, esi
+    NEWLINE
+
+    PRINT_STRING `y: `
+    PRINT_DEC 4, edi
+    NEWLINE           
+    
+    cmp esi, edi
+    cmovl esi, edi
+
+    mov edi, [EBP+16]   ; z
+    PRINT_STRING `z: `
+    PRINT_DEC 4, edi
+    NEWLINE           
+
+    cmp esi, edi
+    cmovl esi, edi
+
+    mov eax, esi
+
+.end:
+    pop edi
+    pop esi
+
+    mov esp, ebp
+    pop ebp
+
+    ret
+</code></pre>
+<hr>
+<p><strong>04_swap2.asm (cdecl)</strong></p>
+<p>Написать функцию, переставляющую значения двух переменных</p>
+<pre><code>void swap(int* a, int* b) {
+	int* tmp = a;
+	*a = *b;
+	*b = *tmp;
+}
+</code></pre>
+<br>
+<pre><code>%include "io.inc"
+
+section .bss
+    x resd 1
+    y resd 1
+
+section .text
+global CMAIN
+CMAIN:
+    push ebp
+    mov ebp, esp
+
+    GET_DEC 4, [x]
+    GET_DEC 4, [y]
+    
+    PRINT_STRING `x: ` 
+    PRINT_DEC 4, [x]
+    NEWLINE
+
+    PRINT_STRING `y: ` 
+    PRINT_DEC 4, [y]
+    NEWLINE
+    
+    push eax
+
+    push y
+    push x
+                          
+    call swap
+    
+    add esp, 8
+
+    pop eax
+ 
+    NEWLINE
+    
+    PRINT_STRING `x: ` 
+    PRINT_DEC 4, [x]
+    NEWLINE
+
+    PRINT_STRING `y: ` 
+    PRINT_DEC 4, [y]
+    NEWLINE   
+	
+	mov esp, ebp
+    pop ebp 
+    
+    xor eax, eax
+    ret
+     
+swap:
+    push ebp
+    mov ebp, esp
+
+    ; сохраняем значения регистров
+    push esi
+    push edi
+    push ebx
+
+    mov esi, [EBP + 8]   ; адрес переменной x
+    mov edi, [EBP + 12]  ; адрес переменной y
+
+    NEWLINE
+    PRINT_STRING `[x]: `
+    PRINT_DEC 4, [esi];
+    NEWLINE
+    PRINT_STRING `[y]: `
+    PRINT_DEC 4, [edi];
+    NEWLINE
+    
+    mov ebx, [esi]
+    mov eax, [edi]
+
+    mov [esi], eax
+    mov [edi], ebx
+    
+    ; восстанавливаем значения регистров
+    pop ebx
+    pop edi
+    pop esi
+    
+    mov esp, ebp
+    pop ebp
+
+    ret
+</code></pre>
+<hr>
+<p><strong>05_sum_array.asm (cdecl)</strong></p>
+<p>Написать функцию, возвращающую сумму элементов массива</p>
+<pre><code>int array_sum(int* x, int n) {
+	int sum = 0;
+
+	for (int i = 0; i &lt; n; i++) {
+		sum += x[i];
+	}
+
+	return sum;
+}
+</code></pre>
+<br>
+<pre><code>%include "io.inc"
+
+N EQU 100
+
+section .bss
+    x resd N
+
+section .text
+global CMAIN
+CMAIN:
+    push ebp
+    mov ebp, esp
+
+    MOV ECX, 0
+
+.input_for:    
+    GET_DEC 4, eax
+    CMP eax, 0
+    JE .input_end
+    
+    MOV [x + ECX * 4], eax
+    INC ECX
+    JMP .input_for
+
+.input_end:
+
+    PRINT_DEC 4, ecx
+    NEWLINE
+    MOV EDX, ECX
+    
+    MOV ECX, 0
+
+.print_for:
+    PRINT_DEC 4, [x + ECX * 4]
+    INC ECX
+    CMP ecx, edx
+    JL .print_for    
+    
+    push edx
+    push DWORD x
+    
+    call sum_array
+    
+    add ESP, 8
+
+    PRINT_STRING `sum: `
+    PRINT_DEC 4, eax
+    
+    mov esp, ebp
+    pop ebp
+        
+    xor eax, eax
+    ret
+    
+sum_array:
+    push ebp
+    mov ebp, esp
+    
+    mov esi, [EBP+8]
+    mov edi, [EBP+12]
+    
+    NEWLINE
+    PRINT_STRING `x:`
+    PRINT_DEC 4, esi
+    NEWLINE
+
+    PRINT_STRING `n:`
+    PRINT_DEC 4, edi
+    NEWLINE
+
+    mov eax, 0
+    
+    mov ecx, 0
+    
+.sum_for:
+    ADD eax, [esi + ECX * 4]
+    INC ECX
+    CMP ecx, edi
+    JL .sum_for    
+
+    mov esp, ebp
+    pop ebp
+
+    ret
+</code></pre>
+
+    </div>
+  </div>
+</body>
+
+</html>
